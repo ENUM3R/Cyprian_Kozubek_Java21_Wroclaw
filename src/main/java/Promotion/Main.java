@@ -1,9 +1,17 @@
 package Promotion;
 
+import Promotion.service.InputParser;
+
 public class Main {
     public static void main(String[] args) {
-        for (String arg : args) {
-            System.out.println(arg);
-        }
+        String order_file;
+        String payment_file;
+        order_file = args[0];
+        payment_file = args[1];
+        String filename = "C:\\Users\\cypri\\IdeaProjects\\Cyprian_Kozubek_Java21_Wroclaw\\src\\main\\java\\Promotion\\orders.json";
+        InputParser inputParser = new InputParser();
+        inputParser.parseOrder(filename);
+        filename = "C:\\Users\\cypri\\IdeaProjects\\Cyprian_Kozubek_Java21_Wroclaw\\src\\main\\java\\Promotion\\paymentmethods.json";
+        inputParser.parsePaymentMethods(filename);
     }
 }

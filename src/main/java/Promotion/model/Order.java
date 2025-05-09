@@ -1,21 +1,19 @@
 package Promotion.model;
 
+import java.util.List;
+
 public class Order {
-    private String orderID;
+    private String id;
     private double value;
-    private String promotions;
+    private List<String> promotions;
 
-    public Order(String orderID, double value, String promotions) {
-        this.orderID = orderID;
-        this.value = value;
-        this.promotions = promotions;
-    }
+    public Order() {}
 
-    public String getOrderID() {
-        return orderID;
+    public String getID() {
+        return id;
     }
-    public void setOrderID(String orderID) {
-        this.orderID = orderID;
+    public void setID(String id) {
+        this.id = id;
     }
     public double getValue() {
         return value;
@@ -23,10 +21,10 @@ public class Order {
     public void setValue(double value) {
         this.value = value;
     }
-    public String getPromotions() {
+    public List<String> getPromotions() {
         return promotions;
     }
-    public void setPromotions(String promotions) {
+    public void setPromotions(List<String> promotions) {
         this.promotions = promotions;
     }
 }

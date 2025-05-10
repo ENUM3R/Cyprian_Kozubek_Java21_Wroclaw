@@ -1,10 +1,11 @@
 package Promotion.model;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class Order {
     private String id;
-    private double value;
+    private BigDecimal value;
     private List<String> promotions;
 
     public Order() {}
@@ -15,10 +16,10 @@ public class Order {
     public void setID(String id) {
         this.id = id;
     }
-    public double getValue() {
+    public BigDecimal getValue() {
         return value;
     }
-    public void setValue(double value) {
+    public void setValue(BigDecimal value) {
         this.value = value;
     }
     public List<String> getPromotions() {

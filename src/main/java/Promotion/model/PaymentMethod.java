@@ -1,9 +1,11 @@
 package Promotion.model;
 
+import java.math.BigDecimal;
+
 public class PaymentMethod {
     private String id;
-    private int discount;
-    private double limit;
+    private BigDecimal discount;
+    private BigDecimal limit;
 
     public PaymentMethod() {}
 
@@ -14,16 +16,16 @@ public class PaymentMethod {
     public void setId(String id) {
         this.id = id;
     }
-    public int getDiscount() {
+    public BigDecimal getDiscount() {
         return discount;
     }
-    public void setDiscount(int discount) {
+    public void setDiscount(BigDecimal discount) {
         this.discount = discount;
     }
-    public double getLimit() {
+    public BigDecimal getLimit() {
         return limit;
     }
-    public void setLimit(double limit) {
+    public void setLimit(BigDecimal limit) {
         this.limit = limit;
     }
 

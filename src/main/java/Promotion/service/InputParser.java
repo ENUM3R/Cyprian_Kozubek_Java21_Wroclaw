@@ -9,33 +9,22 @@ import java.util.List;
 
 public class InputParser {
 
-    public void parseOrder(String filename) {
+    public List<Order> parseOrder(String filename) {
         ObjectMapper mapper = new ObjectMapper();
         try{
-            List<Order> orders = mapper.readValue(new File(filename), new TypeReference<List<Order>>(){});
-            for (Order order : orders) {
-                System.out.println("Order ID: " + order.getID());
-                System.out.println("Promotions: " + order.getPromotions());
-                System.out.println("Value: " + order.getValue());
-                System.out.println();
-                System.out.println("-   -");
-            }
+            return mapper.readValue(new File(filename), new TypeReference<List<Order>>(){});
         } catch (Exception e){
             e.printStackTrace();
+            return List.of();
         }
     }
-    public void parsePaymentMethods(String filename) {
+    public List<PaymentMethod> parsePaymentMethods(String filename) {
         ObjectMapper mapper = new ObjectMapper();
         try {
-            List<PaymentMethod> methods = mapper.readValue(new File(filename), new TypeReference<List<PaymentMethod>>() {});
-            for (PaymentMethod method : methods) {
-                System.out.println("ID: " + method.getId());
-                System.out.println("Discount: " + method.getDiscount());
-                System.out.println("Limit: " + method.getLimit());
-                System.out.println("-----");
-            }
+            return mapper.readValue(new File(filename), new TypeReference<List<PaymentMethod>>() {});
         } catch (Exception e) {
             e.printStackTrace();
+            return List.of();
         }
     }
 }

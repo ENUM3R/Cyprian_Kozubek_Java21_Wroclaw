@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.util.Map;
 
 public class CalculateDiscount {
+    private final MoneyUtil moneyUtil = new MoneyUtil();
 
     public BigDecimal calculateDiscountFullCard(Order order, Map<PaymentMethod, BigDecimal> paymentBreakdown) {
         if (paymentBreakdown.size() != 1) {
@@ -16,35 +17,32 @@ public class CalculateDiscount {
         }
         PaymentMethod method = paymentBreakdown.keySet().iterator().next();
         if (order.getPromotions() == null || !order.getPromotions().contains(method.getId())) {
-            return null;
+            return BigDecimal.ZERO;
         }
         if (order.getValue().compareTo(method.getLimit()) > 0) {
             return null;
         }
-        BigDecimal discountPercentage = method.getDiscount().divide(new BigDecimal("100"));
-        BigDecimal discount = discountPercentage.multiply(order.getValue());
-
-        MoneyUtil moneyUtil = new MoneyUtil();
+        BigDecimal discount = method.getDiscount()
+                .divide(new BigDecimal("100"))
+                .multiply(order.getValue());
         return moneyUtil.roundToTwoDecimalPlaces(discount);
     }
 
     public BigDecimal calculateDiscountPartPoints(Order order, Map<PaymentMethod, BigDecimal> paymentBreakdown) {
-        BigDecimal amountPaidWihtPoints = BigDecimal.ZERO;
+        BigDecimal pointsPaid = BigDecimal.ZERO;
+        BigDecimal orderValue = order.getValue();
+
         for (Map.Entry<PaymentMethod, BigDecimal> entry : paymentBreakdown.entrySet()) {
-            PaymentMethod method = entry.getKey();
-            BigDecimal amount = entry.getValue();
-            if (method.getId().equals("PUNKTY")) {
-                amountPaidWihtPoints = amountPaidWihtPoints.add(amount);
-                break;
+            if ("PUNKTY".equals(entry.getKey().getId())) {
+                pointsPaid = pointsPaid.add(entry.getValue());
             }
         }
-        if (amountPaidWihtPoints.compareTo(BigDecimal.ZERO) == 0
-        || amountPaidWihtPoints.compareTo(order.getValue().multiply(new BigDecimal("0.10"))) < 0) {
+        if (pointsPaid.compareTo(BigDecimal.ZERO) == 0 ||
+                pointsPaid.compareTo(orderValue.multiply(new BigDecimal("0.10"))) < 0) {
             return null;
         }
-        BigDecimal discount = order.getValue().multiply(new BigDecimal("0.10"));
 
-        MoneyUtil moneyUtil = new MoneyUtil();
+        BigDecimal discount = orderValue.multiply(new BigDecimal("0.10"));
         return moneyUtil.roundToTwoDecimalPlaces(discount);
     }
 
@@ -53,37 +51,47 @@ public class CalculateDiscount {
             return null;
         }
         PaymentMethod method = paymentBreakdown.keySet().iterator().next();
-        if (!method.getId().equals("PUNKTY")) {
+        if (!"PUNKTY".equals(method.getId())) {
             return null;
         }
         if (order.getValue().compareTo(method.getLimit()) > 0) {
             return null;
         }
-        BigDecimal discountPercentage = method.getDiscount().divide(new BigDecimal("100"));
-        BigDecimal discount = discountPercentage.multiply(order.getValue());
+        BigDecimal discount = method.getDiscount()
+                .divide(new BigDecimal("100"))
+                .multiply(order.getValue());
 
-        MoneyUtil moneyUtil = new MoneyUtil();
         return moneyUtil.roundToTwoDecimalPlaces(discount);
     }
 
     public PaymentDecision calculateDiscounts(Order order, Map<PaymentMethod, BigDecimal> paymentBreakdown) {
-        BigDecimal totalDiscount = BigDecimal.ZERO;
-        MoneyUtil moneyUtil = new MoneyUtil();
-        if(paymentBreakdown.size() == 1){
+        BigDecimal discount;
+        if (paymentBreakdown.size() == 1) {
             PaymentMethod method = paymentBreakdown.keySet().iterator().next();
 
-            if(method.getId().equals("PUNKTY")){
-                totalDiscount = calculateDiscountFullPoints(order, paymentBreakdown);
-            }else if(method.getId().equals("mZYSK") || method.getId().equals("BosBankrut")){
-                totalDiscount = calculateDiscountFullCard(order, paymentBreakdown);
+            if ("PUNKTY".equals(method.getId())) {
+                discount = calculateDiscountFullPoints(order, paymentBreakdown);
+            } else {
+                BigDecimal d = calculateDiscountFullCard(order, paymentBreakdown);
+                if (d != null) {
+                    discount = d;
+                } else {
+                    discount = BigDecimal.ZERO;
+                }
             }
         } else {
-            totalDiscount = calculateDiscountPartPoints(order, paymentBreakdown);
+            BigDecimal d = calculateDiscountPartPoints(order, paymentBreakdown);
+            if (d != null) {
+                discount = d;
+            } else {
+                discount = BigDecimal.ZERO;
+            }
         }
         PaymentDecision decision = new PaymentDecision();
         decision.setOrderId(order.getID());
         decision.setUsedMethods(paymentBreakdown);
-        decision.setDiscount(totalDiscount);
+        decision.setDiscount(discount);
         return decision;
     }
+
 }

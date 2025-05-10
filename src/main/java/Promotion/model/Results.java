@@ -1,15 +1,16 @@
 package Promotion.model;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 
 public class Results {
-    private HashMap<Integer,Double> results;
+    private HashMap<BigDecimal, BigDecimal> results;
 
 
-    public void setResults(HashMap<Integer,Double> results) {
+    public void setResults(HashMap<BigDecimal,BigDecimal> results) {
         this.results = results;
     }
-    public HashMap<Integer,Double> getResults() {
+    public HashMap<BigDecimal,BigDecimal> getResults() {
         return results;
     }
 }

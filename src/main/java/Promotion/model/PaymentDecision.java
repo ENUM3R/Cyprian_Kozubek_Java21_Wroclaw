@@ -4,21 +4,27 @@ import java.util.Map;
 import java.math.BigDecimal;
 
 public class PaymentDecision {
-    private int orderId;
-    private Map<String, BigDecimal> usedMethods;
+    private String orderId;
+    private Map<PaymentMethod, BigDecimal> usedMethods;
+    private BigDecimal discount;
 
-    public int getOrderId() {
+    public String getOrderId() {
         return orderId;
     }
-    public void setOrderId(int orderId) {
+    public void setOrderId(String orderId) {
         this.orderId = orderId;
     }
-    public Map<String, BigDecimal> getUsedMethods() {
+    public Map<PaymentMethod, BigDecimal> getUsedMethods() {
         return usedMethods;
     }
-    public void setUsedMethods(Map<String, BigDecimal> usedMethods) {
+    public void setUsedMethods(Map<PaymentMethod, BigDecimal> usedMethods) {
         this.usedMethods = usedMethods;
     }
-
+    public BigDecimal getDiscount() {
+        return discount;
+    }
+    public void setDiscount(BigDecimal discount) {
+        this.discount = discount;
+    }
 
 }

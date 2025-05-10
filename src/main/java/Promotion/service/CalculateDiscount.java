@@ -29,12 +29,11 @@ public class CalculateDiscount {
     }
 
     public BigDecimal calculateDiscountPartPoints(Order order, Map<PaymentMethod, BigDecimal> paymentBreakdown) {
-        PaymentMethod method = paymentBreakdown.keySet().iterator().next();
         BigDecimal amountPaidWihtPoints = BigDecimal.ZERO;
         for (Map.Entry<PaymentMethod, BigDecimal> entry : paymentBreakdown.entrySet()) {
-            PaymentMethod paymentMethod = entry.getKey();
+            PaymentMethod method = entry.getKey();
             BigDecimal amount = entry.getValue();
-            if (paymentMethod.getId().equals("PUNKTY")) {
+            if (method.getId().equals("PUNKTY")) {
                 amountPaidWihtPoints = amountPaidWihtPoints.add(amount);
                 break;
             }
@@ -68,7 +67,23 @@ public class CalculateDiscount {
     }
 
     public PaymentDecision calculateDiscounts(Order order, Map<PaymentMethod, BigDecimal> paymentBreakdown) {
+        BigDecimal totalDiscount = BigDecimal.ZERO;
+        MoneyUtil moneyUtil = new MoneyUtil();
+        if(paymentBreakdown.size() == 1){
+            PaymentMethod method = paymentBreakdown.keySet().iterator().next();
 
-        return null;
+            if(method.getId().equals("PUNKTY")){
+                totalDiscount = calculateDiscountFullPoints(order, paymentBreakdown);
+            }else if(method.getId().equals("mZYSK") || method.getId().equals("BosBankrut")){
+                totalDiscount = calculateDiscountFullCard(order, paymentBreakdown);
+            }
+        } else {
+            totalDiscount = calculateDiscountPartPoints(order, paymentBreakdown);
+        }
+        PaymentDecision decision = new PaymentDecision();
+        decision.setOrderId(order.getID());
+        decision.setUsedMethods(paymentBreakdown);
+        decision.setDiscount(totalDiscount);
+        return decision;
     }
 }

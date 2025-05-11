@@ -3,128 +3,95 @@ package Promotion.service;
 import Promotion.model.Order;
 import Promotion.model.PaymentDecision;
 import Promotion.model.PaymentMethod;
-import Promotion.util.MoneyUtil;
 
 import java.math.BigDecimal;
 import java.util.*;
 
 public class PaymentOptimizer {
-    private final CalculateDiscount calculateDiscount;
-    private final MoneyUtil moneyUtil;
+    private final CalculateDiscount calculator = new CalculateDiscount();
 
-    public PaymentOptimizer() {
-        this.calculateDiscount = new CalculateDiscount();
-        this.moneyUtil = new MoneyUtil();
-    }
+    public List<PaymentDecision> optimizeAll(List<Order> orders, Map<PaymentMethod, BigDecimal> availableMethods) {
+        List<PaymentDecision> results = new ArrayList<>();
 
-    public PaymentDecision optimize(Order order, Map<PaymentMethod, BigDecimal> wallet) {
-        List<PaymentDecision> possibleDecisions = new ArrayList<>();
+        for (Order order : orders) {
+            List<Map<PaymentMethod, BigDecimal>> possibleCombinations = generateValidCombinations(order, availableMethods);
+            PaymentDecision bestDecision = null;
+            BigDecimal maxDiscount = BigDecimal.ZERO;
 
-        BigDecimal orderValue = order.getValue();
-
-        for (PaymentMethod method : wallet.keySet()) {
-            if ("PUNKTY".equals(method.getId()) && wallet.get(method).compareTo(orderValue) >= 0) {
-                Map<PaymentMethod, BigDecimal> breakdown = Map.of(method, orderValue);
-                BigDecimal discount = calculateDiscount.calculateDiscountFullPoints(order, breakdown);
-                if (discount != null) {
-                    possibleDecisions.add(buildDecision(order, breakdown, discount));
-                }
-            }
-        }
-
-        for (PaymentMethod method : wallet.keySet()) {
-            if (!"PUNKTY".equals(method.getId())
-                    && wallet.get(method).compareTo(orderValue) >= 0
-                    && (order.getPromotions() != null && order.getPromotions().contains(method.getId()))
-            ) {
-                Map<PaymentMethod, BigDecimal> breakdown = Map.of(method, orderValue);
-                BigDecimal discount = calculateDiscount.calculateDiscountFullCard(order, breakdown);
-                if (discount != null) {
-                    possibleDecisions.add(buildDecision(order, breakdown, discount));
-                }
-            }
-        }
-
-        for (PaymentMethod card : wallet.keySet()) {
-            if ("PUNKTY".equals(card.getId())) continue;
-
-            BigDecimal pointsAvailable = wallet.entrySet().stream()
-                    .filter(e -> "PUNKTY".equals(e.getKey().getId()))
-                    .map(Map.Entry::getValue)
-                    .findFirst().orElse(BigDecimal.ZERO);
-
-            BigDecimal minPoints = orderValue.multiply(new BigDecimal("0.10"));
-            if (pointsAvailable.compareTo(minPoints) >= 0) {
-                BigDecimal pointsUsed = pointsAvailable.min(orderValue);
-                BigDecimal remaining = orderValue.subtract(pointsUsed);
-
-                if (wallet.get(card).compareTo(remaining) >= 0) {
-                    Map<PaymentMethod, BigDecimal> breakdown = new LinkedHashMap<>();
-                    PaymentMethod pointsMethod = getPointsMethod(wallet);
-                    breakdown.put(pointsMethod, pointsUsed);
-                    breakdown.put(card, remaining);
-
-                    BigDecimal discount = calculateDiscount.calculateDiscountPartPoints(order, breakdown);
-                    if (discount != null) {
-                        possibleDecisions.add(buildDecision(order, breakdown, discount));
-                    }
-                }
-            }
-        }
-
-        for (PaymentMethod method : wallet.keySet()) {
-            if (wallet.get(method).compareTo(orderValue) >= 0) {
-                Map<PaymentMethod, BigDecimal> breakdown = Map.of(method, orderValue);
-                possibleDecisions.add(buildDecision(order, breakdown, BigDecimal.ZERO));
-                break;
-            }
-        }
-
-        PaymentDecision best = null;
-        for (PaymentDecision pd : possibleDecisions) {
-            if (best == null) {
-                best = pd;
-            } else {
-                int cmp = pd.getDiscount().compareTo(best.getDiscount());
+            for (Map<PaymentMethod, BigDecimal> option : possibleCombinations) {
+                PaymentDecision decision = calculator.calculateDiscounts(order, option);
+                if (decision == null || decision.getDiscount() == null) continue;
+                int cmp = decision.getDiscount().compareTo(maxDiscount);
                 if (cmp > 0) {
-                    best = pd;
-                } else if (cmp == 0) {
-                    BigDecimal thisPoints = getAmountPaidWithPoints(pd);
-                    BigDecimal bestPoints = getAmountPaidWithPoints(best);
-                    if (thisPoints.compareTo(bestPoints) > 0) {
-                        best = pd;
+                    maxDiscount = decision.getDiscount();
+                    bestDecision = decision;
+                } else if (cmp == 0 && bestDecision != null) {
+                    BigDecimal pointsUsedNow = getPointsUsed(decision);
+                    BigDecimal pointsUsedBest = getPointsUsed(bestDecision);
+                    if (pointsUsedNow.compareTo(pointsUsedBest) > 0) {
+                        bestDecision = decision;
+                    }
+                }
+            }
+            if (bestDecision != null) {
+                for (Map.Entry<PaymentMethod, BigDecimal> e : bestDecision.getUsedMethods().entrySet()) {
+                    BigDecimal old = availableMethods.get(e.getKey());
+                    availableMethods.put(e.getKey(), old.subtract(e.getValue()));
+                }
+                results.add(bestDecision);
+            } else {
+                System.err.println("No special discount for " + order.getID());
+            }
+        }
+        return results;
+    }
+
+    private List<Map<PaymentMethod, BigDecimal>> generateValidCombinations(Order order, Map<PaymentMethod, BigDecimal> availableMethods) {
+        List<Map<PaymentMethod, BigDecimal>> combinations = new ArrayList<>();
+        BigDecimal orderValue = order.getValue();
+        for (PaymentMethod method : availableMethods.keySet()) {
+            BigDecimal available = availableMethods.get(method);
+            if (available.compareTo(orderValue) >= 0) {
+                Map<PaymentMethod, BigDecimal> single = new HashMap<>();
+                single.put(method, orderValue);
+                combinations.add(single);
+            }
+        }
+        PaymentMethod pointsMethod = getPointsMethod(availableMethods);
+        if (pointsMethod != null) {
+            BigDecimal pointsAvailable = availableMethods.get(pointsMethod);
+            BigDecimal tenPercent = orderValue.multiply(new BigDecimal("0.10"));
+            BigDecimal remaining = orderValue.subtract(tenPercent);
+
+            if (pointsAvailable.compareTo(tenPercent) >= 0) {
+                for (PaymentMethod card : availableMethods.keySet()) {
+                    if ("PUNKTY".equals(card.getId())) continue;
+                    BigDecimal cardAvailable = availableMethods.get(card);
+                    if (cardAvailable.compareTo(remaining) >= 0) {
+                        Map<PaymentMethod, BigDecimal> combo = new HashMap<>();
+                        combo.put(pointsMethod, tenPercent);
+                        combo.put(card, remaining);
+                        combinations.add(combo);
                     }
                 }
             }
         }
-        if (best != null) {
-            return best;
-        } else {
-            return buildDecision(order, Collections.emptyMap(), BigDecimal.ZERO);
-        }
+        return combinations;
     }
 
-    private BigDecimal getAmountPaidWithPoints(PaymentDecision decision) {
-        return decision.getUsedMethods().entrySet().stream()
-                .filter(e -> "PUNKTY".equals(e.getKey().getId()))
-                .map(Map.Entry::getValue)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private PaymentMethod getPointsMethod(Map<PaymentMethod, BigDecimal> wallet) {
-        for (PaymentMethod method : wallet.keySet()) {
+    private PaymentMethod getPointsMethod(Map<PaymentMethod, BigDecimal> map) {
+        for (PaymentMethod method : map.keySet()) {
             if ("PUNKTY".equals(method.getId())) {
                 return method;
             }
         }
-        throw new IllegalStateException("No points method found in wallet");
+        return null;
     }
 
-    private PaymentDecision buildDecision(Order order, Map<PaymentMethod, BigDecimal> breakdown, BigDecimal discount) {
-        PaymentDecision decision = new PaymentDecision();
-        decision.setOrderId(order.getID());
-        decision.setUsedMethods(breakdown);
-        decision.setDiscount(discount);
-        return decision;
+    private BigDecimal getPointsUsed(PaymentDecision decision) {
+        return decision.getUsedMethods().entrySet().stream()
+                .filter(e -> "PUNKTY".equals(e.getKey().getId()))
+                .map(Map.Entry::getValue)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

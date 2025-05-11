@@ -8,9 +8,7 @@ import Promotion.service.PaymentOptimizer;
 import Promotion.util.MoneyUtil;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Main {
     public static void main(String[] args) {
@@ -18,39 +16,45 @@ public class Main {
             System.out.println("Usage: java Main <orders.json> <paymentmethods.json>");
             return;
         }
+
         String orderFile = args[0];
         String paymentFile = args[1];
 
         InputParser inputParser = new InputParser();
         List<Order> orders = inputParser.parseOrder(orderFile);
-        Map<PaymentMethod, BigDecimal> paymentMethods = inputParser.parsePaymentMethods(paymentFile);
+        Map<PaymentMethod, BigDecimal> available = inputParser.parsePaymentMethods(paymentFile);
 
-        PaymentOptimizer optimizer = new PaymentOptimizer();
-        Map<String, BigDecimal> aggregatedResults = new HashMap<>();
-
-        for (Order order : orders) {
-            PaymentDecision decision = optimizer.optimize(order, paymentMethods);
-            Map<PaymentMethod, BigDecimal> bestBreakdown = decision.getUsedMethods();
-
-            if (bestBreakdown == null || bestBreakdown.isEmpty()) {
-                System.err.println("Cannot choose payment for this order: " + order.getID());
-                continue;
-            }
-            for (Map.Entry<PaymentMethod, BigDecimal> entry : bestBreakdown.entrySet()) {
-                String methodId = entry.getKey().getId();
-                BigDecimal amount = entry.getValue();
-                aggregatedResults.merge(methodId, amount, BigDecimal::add);
-            }
-            for (Map.Entry<PaymentMethod, BigDecimal> entry : bestBreakdown.entrySet()) {
-                PaymentMethod methodUsed = entry.getKey();
-                BigDecimal usedAmount = entry.getValue();
-                BigDecimal remaining = paymentMethods.get(methodUsed).subtract(usedAmount);
-                paymentMethods.put(methodUsed, remaining);
-            }
+        System.out.println("Available payment methods: ");
+        for (Map.Entry<PaymentMethod, BigDecimal> entry : available.entrySet()) {
+            System.out.println("Method: " + entry.getKey().getId() + ", Amount: " + entry.getValue());
         }
-        MoneyUtil moneyUtil = new MoneyUtil();
-        for (Map.Entry<String, BigDecimal> entry : aggregatedResults.entrySet()) {
-            System.out.println(entry.getKey() + " " + moneyUtil.roundToTwoDecimalPlaces(entry.getValue()));
+        PaymentOptimizer optimizer = new PaymentOptimizer();
+        List<PaymentDecision> decisions = optimizer.optimizeAll(orders, new HashMap<>(available));
+
+        Map<String, BigDecimal> summary = new LinkedHashMap<>();
+        MoneyUtil util = new MoneyUtil();
+        for (PaymentDecision d : decisions) {
+            System.out.println("Order " + d.getOrderId() + " - discount: " + d.getDiscount());
+            BigDecimal orderValue = BigDecimal.ZERO;
+
+            if (d.getOrderId() != null) {
+                for (Order order : orders) {
+                    if (order.getID().equals(d.getOrderId())) {
+                        orderValue = order.getValue();
+                        break;
+                    }
+                }
+            }
+            BigDecimal amountAfterDiscount = orderValue.subtract(d.getDiscount());
+            System.out.println("Amount to pay for " + d.getOrderId() + " after discount: " + util.roundToTwoDecimalPlaces(amountAfterDiscount));
+
+            for (Map.Entry<PaymentMethod, BigDecimal> use : d.getUsedMethods().entrySet()) {
+                String id = use.getKey().getId();
+                BigDecimal amount = use.getValue();
+                summary.merge(id, amount, BigDecimal::add);
+                BigDecimal oldAmount = available.get(use.getKey());
+                available.put(use.getKey(), oldAmount.subtract(amount));
+            }
         }
     }
 }

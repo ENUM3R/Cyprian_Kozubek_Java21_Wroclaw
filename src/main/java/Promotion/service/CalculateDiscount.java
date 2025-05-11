@@ -8,9 +8,15 @@ import Promotion.util.MoneyUtil;
 import java.math.BigDecimal;
 import java.util.Map;
 
+//This class encapsulates the discount logic for different types of payments:
+//full card payment, full loyalty points, or partial points.
+//It determines the correct discount amount based on the order and payment breakdown and constructs a corresponding PaymentDecision.
 public class CalculateDiscount {
     private final MoneyUtil moneyUtil = new MoneyUtil();
 
+    //This method checks if the order is fully paid using one card method,
+    //verifies that this method is eligible for promotion in the order.
+    //If valid, applies the method’s discount to the full order value.
     public BigDecimal calculateDiscountFullCard(Order order, Map<PaymentMethod, BigDecimal> paymentBreakdown) {
         if (paymentBreakdown.size() != 1) {
             return null;
@@ -28,6 +34,8 @@ public class CalculateDiscount {
         return moneyUtil.roundToTwoDecimalPlaces(discount);
     }
 
+    //This method checks if at least 10% of the order is paid with "PUNKTY".
+    //If so, returns a 10% discount on the full order value (cannot be combined with card discounts).
     public BigDecimal calculateDiscountPartPoints(Order order, Map<PaymentMethod, BigDecimal> paymentBreakdown) {
         BigDecimal pointsPaid = BigDecimal.ZERO;
         BigDecimal orderValue = order.getValue();
@@ -46,6 +54,8 @@ public class CalculateDiscount {
         return moneyUtil.roundToTwoDecimalPlaces(discount);
     }
 
+    //This method applies only when 100% of the order is paid using "PUNKTY".
+    //Uses the discount defined for "PUNKTY" from the PaymentMethod.
     public BigDecimal calculateDiscountFullPoints(Order order, Map<PaymentMethod, BigDecimal> paymentBreakdown) {
         if (paymentBreakdown.size() != 1) {
             return null;
@@ -64,6 +74,9 @@ public class CalculateDiscount {
         return moneyUtil.roundToTwoDecimalPlaces(discount);
     }
 
+    //Central method that selects the proper discount calculation strategy:
+    // full card, partial points, full points,or zero discount.
+    //Builds and returns a PaymentDecision object with the calculated discount and the used payment breakdown.
     public PaymentDecision calculateDiscounts(Order order, Map<PaymentMethod, BigDecimal> paymentBreakdown) {
         BigDecimal discount;
         if (paymentBreakdown.size() == 1) {

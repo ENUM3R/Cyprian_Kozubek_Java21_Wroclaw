@@ -1,7 +1,8 @@
 package Promotion.model;
 
 import java.math.BigDecimal;
-
+//This class represents a single payment method available to the customer, including its discount rate and spending limit.
+//Used to match with applicable promotions and to determine how much can be spent using each method.
 public class PaymentMethod {
     private String id;
     private BigDecimal discount;

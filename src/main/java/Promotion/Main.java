@@ -19,7 +19,7 @@ public class Main {
 
         String orderFile = args[0];
         String paymentFile = args[1];
-
+        //Parsing JSON files, using InputParser.java
         InputParser inputParser = new InputParser();
         List<Order> orders = inputParser.parseOrder(orderFile);
         Map<PaymentMethod, BigDecimal> available = inputParser.parsePaymentMethods(paymentFile);
@@ -28,6 +28,7 @@ public class Main {
         for (Map.Entry<PaymentMethod, BigDecimal> entry : available.entrySet()) {
             System.out.println("Method: " + entry.getKey().getId() + ", Amount: " + entry.getValue());
         }
+        //Finding best discounts for each method, using PaymentOptimizer.java
         PaymentOptimizer optimizer = new PaymentOptimizer();
         List<PaymentDecision> decisions = optimizer.optimizeAll(orders, new HashMap<>(available));
 
